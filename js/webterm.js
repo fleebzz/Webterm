@@ -1,10 +1,4 @@
 
-/*
-  TODO :
-    - Autocomplete files and folders
-    - Autocomplete commands
-*/
-
 var webterm = (function($, undefined){
 
   var WEBTERM_CONTAINER = 'body';
@@ -28,63 +22,82 @@ var webterm = (function($, undefined){
   }
 
   return {
-    cmd_cd : function(folder){
-      var _folder = webterm.getAbsolutePath(folder);
-      if(typeof myFlatTree[_folder] !== 'undefined'){
-        myCurrentPath = _folder;
-        myCurrentPath.replace(/([^\/]+)?\/$/g, function(p, folder){
-          myCurrentFolder = typeof folder !== 'undefined' ? folder : '/';
-        });
-      }
-      else{
-        webterm.print('Error: cd: ' + folder + ': No such file or directory');
-      }
-      webterm.prompt();
-    },
-    cmd_clear : function(){
-      webterm.clear();
-      webterm.prompt();
-    },
-    cmd_echo : function(text){
-      webterm.printAndPrompt(text);
-    },
-    cmd_help : function(){
-      var _tmpl = [
-        'echo &lt;text&gt; : echo in this console given &lt;text&gt;',
-        'help : show this help',
-        'hostname &lt;hostname&gt; : show hostname or update it if &lt;hostname&gt; specified'
-      ].join('<br>');
-      webterm.printAndPrompt(_tmpl);
-    },
-    cmd_hostname : function(newHostname){
-      if(typeof newHostname === 'string'){
-        myHostname = newHostname;
-      }
-      webterm.printAndPrompt(myHostname);
-    },
-    cmd_mkdir : function(dir){
-      if(typeof dir !== 'string'){
-        webterm.errorAndPrompt('mkdir', 'specify a directory to create');
-      }
-      else{
-        myFlatTree[myCurrentPath][dir] = {};
-        webterm.rebuildTree();
+    cmd_cd : {
+      description : '<dir> : Changes the current directory to <dir>.',
+      execute : function(folder){
+        var _folder = webterm.getAbsolutePath(folder);
+        if(typeof myFlatTree[_folder] !== 'undefined'){
+          myCurrentPath = _folder;
+          myCurrentPath.replace(/([^\/]+)?\/$/g, function(p, folder){
+            myCurrentFolder = typeof folder !== 'undefined' ? folder : '/';
+          });
+        }
+        else{
+          webterm.error('cd', folder, 'No such file or directory');
+        }
         webterm.prompt();
       }
     },
-    cmd_ls : function(path){
-      var _ouput = ['.'];
-      var _path = myCurrentPath;
-      if(typeof path === 'string'){
-        _path = webterm.getAbsolutePath(path);
+    cmd_clear : {
+      description : ': Clears your screen',
+      execute : function(){
+        webterm.clear();
+        webterm.prompt();
       }
-      for(var i in myFlatTree[_path]){
-        _ouput.push(i);
-      }
-      webterm.printAndPrompt(_ouput.join('<br>'));
     },
-    cmd_pwd : function(){
-      webterm.printAndPrompt(webterm.path());
+    cmd_echo : {
+      description : '<text> : Writes <text> to the standard output.',
+      execute : function(text){
+        webterm.printAndPrompt(text);
+      }
+    },
+    cmd_help : {
+      description : ': Shows this help.',
+      execute : function(){
+        webterm.printHelp();
+      }
+    },
+    cmd_hostname : {
+      description : '[ <hostname> ] : Prints name of current host system or set it to <hostname>.',
+      execute : function(newHostname){
+        if(typeof newHostname === 'string'){
+          myHostname = newHostname;
+        }
+        webterm.printAndPrompt(myHostname);
+      }
+    },
+    cmd_mkdir : {
+      description : '<dir> : Creates the directory <dir>.',
+      execute : function(dir){
+        if(typeof dir !== 'string'){
+          webterm.errorAndPrompt('mkdir', 'specify a directory to create');
+        }
+        else{
+          myFlatTree[myCurrentPath][dir] = {};
+          webterm.rebuildTree();
+          webterm.prompt();
+        }
+      }
+    },
+    cmd_ls : {
+      description : '[ <dir> ] : Lists current directory content or <dir> content if specified.',
+      execute : function(path){
+        var _ouput = ['.'];
+        var _path = myCurrentPath;
+        if(typeof path === 'string'){
+          _path = webterm.getAbsolutePath(path);
+        }
+        for(var i in myFlatTree[_path]){
+          _ouput.push(i);
+        }
+        webterm.printAndPrompt(_ouput.join('<br>'));
+      }
+    },
+    cmd_pwd : {
+      description : 'Prints working directory name.',
+      execute : function(){
+        webterm.printAndPrompt(webterm.path());
+      }
     },
     autoCompletePath : function(){
       var _prompt = webterm.getPromptValue();
@@ -128,7 +141,7 @@ var webterm = (function($, undefined){
       var _command = _split[0];
       var _params = _split.slice(1);
       if(webterm.existsCommand(_command)){
-        webterm['cmd_' + _command].apply(webterm, _params);
+        webterm['cmd_' + _command].execute.apply(webterm, _params);
       }
       else{
         webterm.commandNotFound(_command);
@@ -166,7 +179,7 @@ var webterm = (function($, undefined){
       }
     },
     existsCommand : function(command){
-      return (typeof webterm['cmd_' + command] === 'function');
+      return (typeof webterm['cmd_' + command] === 'object');
     },
     focusLastPrompt : function(){
       webterm.getLastPrompt().focus();
@@ -246,6 +259,18 @@ var webterm = (function($, undefined){
     printAndPrompt : function(content){
       webterm.print(content);
       webterm.prompt();
+    },
+    printHelp : function(){
+      var _commands = [];
+      for(var w in webterm){
+        if(w.slice(0, 4) === 'cmd_'){
+          var _description = webterm[w].description
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;');
+          _commands.push(w.slice(4) + ' ' + _description);
+        }
+      }
+      webterm.printAndPrompt(_commands.join('<br>'));
     },
     prompt : function(value){
       value = typeof value === 'string' ? value : '';
