@@ -94,7 +94,7 @@ var webterm = (function($, undefined){
       }
     },
     cmd_pwd : {
-      description : 'Prints working directory name.',
+      description : ': Prints working directory name.',
       execute : function(){
         webterm.printAndPrompt(webterm.path());
       }
